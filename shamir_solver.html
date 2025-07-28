@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shamir's Secret Sharing Solver & Validator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1em;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 2px dashed #dee2e6;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+
+        .upload-area {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: transform 0.3s ease;
+            margin: 10px;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .json-input {
+            width: 100%;
+            height: 200px;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            resize: vertical;
+            margin-top: 15px;
+        }
+
+        .json-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .results-section {
+            display: none;
+            background: #fff;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f1f3f4;
+        }
+
+        .status-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 15px;
+        }
+
+        .status-pass {
+            background: #28a745;
+            animation: pulse-green 2s infinite;
+        }
+
+        .status-fail {
+            background: #dc3545;
+            animation: pulse-red 2s infinite;
+        }
+
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+        }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+
+        .secret-display {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .points-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .points-table th,
+        .points-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .points-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .validation-row {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .validation-pass {
+            background: rgba(40, 167, 69, 0.1);
+        }
+
+        .validation-fail {
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        .info-section {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .error-section {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .sample-json {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Shamir's Secret Sharing Solver</h1>
+            <p>Upload your JSON test case and validate the solution instantly</p>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-area">
+                <div class="upload-icon">📁</div>
+                <h3>Upload JSON Test Case</h3>
+                <p>Choose a JSON file or paste your test case below</p>
+                
+                <input type="file" id="fileInput" class="file-input" accept=".json" />
+                <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                    📤 Choose File
+                </button>
+            </div>
+            
+            <div>
+                <h4>Or paste JSON directly:</h4>
+                <textarea id="jsonInput" class="json-input" placeholder="Paste your JSON test case here..."></textarea>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="processJson()">🚀 Solve & Validate</button>
+                    <button class="btn btn-secondary" onclick="clearInput()">🗑️ Clear</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="results" class="results-section">
+            <!-- Results will be populated here -->
+        </div>
+
+        <div class="info-section">
+            <h4>📋 How it works:</h4>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li>Upload a JSON file or paste test case data</li>
+                <li>The solver decodes values from different bases</li>
+                <li>Uses Lagrange interpolation to find the secret</li>
+                <li>Validates the solution by checking all points</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Function to convert from any base to decimal
+        function baseToDecimal(value, base) {
+            return parseInt(value, base);
+        }
+
+        // Lagrange interpolation to find the constant term
+        function lagrangeInterpolation(points, k) {
+            const selectedPoints = points.slice(0, k);
+            let secret = 0;
+            
+            for (let i = 0; i < selectedPoints.length; i++) {
+                const [xi, yi] = selectedPoints[i];
+                
+                let li = 1;
+                for (let j = 0; j < selectedPoints.length; j++) {
+                    if (i !== j) {
+                        const [xj, yj] = selectedPoints[j];
+                        li *= (0 - xj) / (xi - xj);
+                    }
+                }
+                
+                secret += yi * li;
+            }
+            
+            return Math.round(secret);
+        }
+
+        // Validate the solution
+        function validateSolution(points, secret, k) {
+            const selectedPoints = points.slice(0, k);
+            const tolerance = 1e-10;
+            const validationResults = [];
+            
+            for (let testPoint of points) {
+                const [testX, testY] = testPoint;
+                
+                let calculatedY = 0;
+                for (let i = 0; i < selectedPoints.length; i++) {
+                    const [xi, yi] = selectedPoints[i];
+                    
+                    let li = 1;
+                    for (let j = 0; j < selectedPoints.length; j++) {
+                        if (i !== j) {
+                            const [xj, yj] = selectedPoints[j];
+                            li *= (testX - xj) / (xi - xj);
+                        }
+                    }
+                    
+                    calculatedY += yi * li;
+                }
+                
+                const diff = Math.abs(calculatedY - testY);
+                const isValid = diff <= tolerance;
+                
+                validationResults.push({
+                    x: testX,
+                    y: testY,
+                    calculated: calculatedY,
+                    diff: diff,
+                    valid: isValid
+                });
+            }
+            
+            const allValid = validationResults.every(r => r.valid);
+            return { allValid, results: validationResults };
+        }
+
+        // Process the JSON test case
+        function solveTestCase(testCase) {
+            try {
+                const { keys } = testCase;
+                const n = keys.n;
+                const k = keys.k;
+                
+                // Extract and decode points
+                const points = [];
+                const decodingResults = [];
+                
+                for (let i = 1; i <= n; i++) {
+                    if (testCase[i.toString()]) {
+                        const x = i;
+                        const base = parseInt(testCase[i.toString()].base);
+                        const encodedValue = testCase[i.toString()].value;
+                        
+                        const y = baseToDecimal(encodedValue, base);
+                        points.push([x, y]);
+                        
+                        decodingResults.push({
+                            x: x,
+                            base: base,
+                            encoded: encodedValue,
+                            decoded: y
+                        });
+                    }
+                }
+                
+                if (points.length < k) {
+                    throw new Error(`Need at least ${k} points, but only found ${points.length}`);
+                }
+                
+                // Find the secret
+                const secret = lagrangeInterpolation(points, k);
+                
+                // Validate the solution
+                const validation = validateSolution(points, secret, k);
+                
+                return {
+                    success: true,
+                    secret: secret,
+                    parameters: { n, k },
+                    points: decodingResults,
+                    validation: validation,
+                    error: null
+                };
+                
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+
+        // Display results
+        function displayResults(result) {
+            const resultsSection = document.getElementById('results');
+            
+            if (!result.success) {
+                resultsSection.innerHTML = `
+                    <div class="error-section">
+                        <h3>❌ Error</h3>
+                        <p>${result.error}</p>
+                    </div>
+                `;
+                resultsSection.style.display = 'block';
+                return;
+            }
+            
+            const statusClass = result.validation.allValid ? 'status-pass' : 'status-fail';
+            const statusText = result.validation.allValid ? 'VALIDATION PASSED' : 'VALIDATION FAILED';
+            const statusIcon = result.validation.allValid ? '✅' : '❌';
+            
+            let pointsTableRows = '';
+            result.points.forEach(point => {
+                pointsTableRows += `
+                    <tr>
+                        <td>${point.x}</td>
+                        <td>${point.base}</td>
+                        <td><code>${point.encoded}</code></td>
+                        <td><strong>${point.decoded}</strong></td>
+                    </tr>
+                `;
+            });
+            
+            let validationTableRows = '';
+            result.validation.results.forEach(v => {
+                const rowClass = v.valid ? 'validation-pass' : 'validation-fail';
+                const icon = v.valid ? '✅' : '❌';
+                validationTableRows += `
+                    <tr class="${rowClass}">
+                        <td>${icon}</td>
+                        <td>(${v.x}, ${v.y})</td>
+                        <td>${v.calculated.toFixed(6)}</td>
+                        <td>${v.diff.toExponential(2)}</td>
+                    </tr>
+                `;
+            });
+            
+            resultsSection.innerHTML = `
+                <div class="result-header">
+                    <div class="status-indicator ${statusClass}"></div>
+                    <h2>${statusIcon} ${statusText}</h2>
+                </div>
+                
+                <div class="secret-display">
+                    🔑 Secret (Constant Term): ${result.secret}
+                </div>
+                
+                <div class="info-section">
+                    <h4>📊 Parameters:</h4>
+                    <p><strong>n:</strong> ${result.parameters.n} (total points provided)</p>
+                    <p><strong>k:</strong> ${result.parameters.k} (minimum points needed)</p>
+                    <p><strong>Polynomial degree:</strong> ${result.parameters.k - 1}</p>
+                </div>
+                
+                <h3>📍 Decoded Points:</h3>
+                <table class="points-table">
+                    <thead>
+                        <tr>
+                            <th>X</th>
+                            <th>Base</th>
+                            <th>Encoded Value</th>
+                            <th>Decoded Y</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${pointsTableRows}
+                    </tbody>
+                </table>
+                
+                <h3>🔍 Validation Results:</h3>
+                <table class="points-table">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Point (X, Y)</th>
+                            <th>Calculated Y</th>
+                            <th>Difference</th>
+                        </tr>
+                    </thead>
+                    <tbody class="validation-row">
+                        ${validationTableRows}
+                    </tbody>
+                </table>
+            `;
+            
+            resultsSection.style.display = 'block';
+        }
+
+        // Process JSON input
+        function processJson() {
+            const jsonInput = document.getElementById('jsonInput').value.trim();
+            
+            if (!jsonInput) {
+                alert('Please enter or upload a JSON test case');
+                return;
+            }
+            
+            try {
+                const testCase = JSON.parse(jsonInput);
+                const result = solveTestCase(testCase);
+                displayResults(result);
+            } catch (error) {
+                displayResults({
+                    success: false,
+                    error: `Invalid JSON: ${error.message}`
+                });
+            }
+        }
+
+        // File upload handler
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('jsonInput').value = e.target.result;
+                    processJson();
+                };
+                reader.readAsText(file);
+            }
+        });
+
+
+
+        // Clear input
+        function clearInput() {
+            document.getElementById('jsonInput').value = '';
+            document.getElementById('results').style.display = 'none';
+        }
+
+        // Auto-start with empty form
+        window.onload = function() {
+            // Page loads clean without auto-loading sample
+        };
+    </script>
+</body>
+</html>
